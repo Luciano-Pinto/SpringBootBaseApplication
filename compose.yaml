@@ -11,23 +11,29 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASS}
+    volumes:
+      - ~/DevApps/postgres:/var/lib/postgresql/data
     networks:
       - app-network
 
   keycloak:
     depends_on:
       - sso-db
+    image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION}
     container_name: keycloak
     environment:
-      DB_VENDOR: postgres
-      DB_ADDR: postgres
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASS}
+      DB_VENDOR: ${DB_VENDOR}
+      DB_ADDR: ${DB_ADDR}
+      DB_PORT: ${POSTGRES_PORT}
       DB_DATABASE: ${POSTGRES_DB}
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASS}
-    image: jboss/keycloak:${KEYCLOAK_VERSION}
     ports:
-      - "28080:8080"
-    #restart: unless-stopped
+      - ${KEYCLOAK_PORT}:8080
+    restart: unless-stopped
+    command: start-dev --db postgres --db-url-host sso-db --db-username ${POSTGRES_USER} --db-password ${POSTGRES_PASS}
     networks:
       - app-network
 
@@ -48,18 +54,18 @@ services:
 
 
 
-  redis:
-    build:
-      context: .
-      dockerfile: Dockerfile-redis
-    ports:
-      - 6379:6379
-    volumes:
-      - ./redis_entrypoint.sh:/usr/local/bin/redis_entrypoint.sh
-      - ./redis.conf:/usr/local/etc/redis/redis.conf
-      - ./logs/:/var/log/redis/
-    entrypoint: ["/bin/sh", "/usr/local/bin/redis_entrypoint.sh"]
-    command: redis-server /usr/local/etc/redis/redis.conf --loglevel verbose
-    networks:
-      - app-network
+#  redis:
+#    build:
+#      context: .
+#      dockerfile: Dockerfile-redis
+#    ports:
+#      - 6379:6379
+#    volumes:
+#      - ./redis_entrypoint.sh:/usr/local/bin/redis_entrypoint.sh
+#      - ./redis.conf:/usr/local/etc/redis/redis.conf
+#      - ./logs/:/var/log/redis/
+#    entrypoint: ["/bin/sh", "/usr/local/bin/redis_entrypoint.sh"]
+#    command: redis-server /usr/local/etc/redis/redis.conf --loglevel verbose
+#    networks:
+#      - app-network
 
