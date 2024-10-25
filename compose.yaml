@@ -1,0 +1,242 @@
+services:
+  postgres_db:
+    env_file: ./.env
+    image: postgres:latest
+    container_name: PostgresCont
+    restart: always
+    networks:
+      localhost_default:
+        ipv4_address: 172.22.0.3
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - ./postgres_db:/var/lib/postgresql/data
+
+  pgadmin:
+    env_file: ./.env
+    image: dpage/pgadmin4:latest
+    container_name: PgAdminCont
+    depends_on:
+      - postgres_db
+    restart: always
+    networks:
+      localhost_default:
+        ipv4_address: 172.22.0.4
+    ports:
+      - "5050:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
+
+  redis:
+    image: redis:latest
+    container_name: RedisCont
+    restart: always
+    networks:
+      localhost_default:
+        ipv4_address: 172.22.0.2
+    ports:
+      - "6379:6379"
+
+  keycloak:
+      depends_on:
+        - postgres_db
+      image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION}
+      container_name: KeycloakCont
+      environment:
+        KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+        KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASS}
+        KC_DB: postgres
+        KC_DB_URL_HOST: postgres_db  # Use service name for Postgres
+        KC_DB_URL_PORT: ${KC_DB_PORT}
+        KC_DB_USERNAME: ${KC_DB_USER}
+        KC_DB_PASSWORD: ${KC_DB_PASS}
+        KC_DB_DATABASE: ${KC_DB_NAME}
+      ports:
+        - "8088:8080"
+      restart: unless-stopped
+      command: start-dev
+      networks:
+        localhost_default:
+          ipv4_address: 172.22.0.5 
+
+  krakend:
+      image: devopsfaith/krakend:latest
+      container_name: KrakenDCont
+      restart: always
+      networks:
+        localhost_default:
+          ipv4_address: 172.22.0.6
+      ports:
+        - "8080:8080"  # KrakenD port
+      volumes:
+        - ./krakend:/etc/krakend  # Path to your KrakenD configuration files
+      environment:
+        - KRAKEND_CONFIG=/etc/krakend/krakend.json 
+
+  # mysql_db:
+  #   env_file: ./.env
+  #   image: mysql:latest
+  #   container_name: MySQLCont
+  #   restart: always
+  #   ports:
+  #     - "3306:3306"
+  #   environment:
+  #     - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+  #     - MYSQL_USER=${MYSQL_USER}
+  #     - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+  #   volumes:
+  #     - ./mysql_db:/var/lib/mysql
+
+  # phpmyadmin:
+  #   env_file: ./.env
+  #   image: phpmyadmin/phpmyadmin:latest
+  #   container_name: PhpMyAdminCont
+  #   depends_on:
+  #     - mysql_db
+  #   restart: always
+  #   ports:
+  #     - "8000:80"
+  #   environment:
+  #     - PMA_HOST=mysql_db
+  #     - PMA_USER=${MYSQL_USER}
+  #     - PMA_PASSWORD=${MYSQL_PASSWORD}
+
+  # php:
+  #   image: php:apache
+  #   volumes:
+  #     - ./php/html:/var/www/html
+  #     - ./apache-conf/apache2.conf:/etc/apache2/apache2.conf
+  #     - ./hosts/hosts:/etc/hosts
+  #   depends_on:
+  #     - postgres_db
+  #     # - mysql_db
+
+  # Java with Spring Boot Service
+  # java_spring:
+  #   build:
+  #     context: ./java_spring
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     - postgres_db
+  #     - mysql_db
+
+  # Python with Django Service
+  # python_django:
+  #   build:
+  #     context: ./python_django
+  #   ports:
+  #     - "8000:8000"
+  #   depends_on:
+  #     - postgres_db
+  #     - mysql_db
+
+  # Web Service as Reverse Proxy
+  # web:
+  #   image: nginx:latest
+  #   volumes:
+  #     - ./nginx/conf:/etc/nginx/conf.d
+  #     - ./apache2.conf:/etc/apache2/apache2.conf
+  #   ports:
+  #     - "8080:80"
+  #   depends_on:
+  #     - php
+  #     # - java_spring
+  #     # - python_django
+
+  # Kafka (commented out for future use)
+  # kafka:
+  #   image: wurstmeister/kafka:2.13-2.7.0
+  #   container_name: KafkaCont
+  #   restart: always
+  #   ports:
+  #     - "9092:9092"
+  #   expose:
+  #     - "9093"
+  #   environment:
+  #     KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:9093,OUTSIDE://localhost:9092
+  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+  #     KAFKA_LISTENERS: INSIDE://0.0.0.0:9093,OUTSIDE://0.0.0.0:9092
+  #     KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+  #     KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+  #   depends_on:
+  #     - zookeeper
+
+  # zookeeper:
+  #   image: wurstmeister/zookeeper:3.4.6
+  #   container_name: ZookeeperCont
+  #   restart: always
+  #   ports:
+  #     - "2181:2181"
+
+  # elasticsearch:
+  #   image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+  #   container_name: ElasticsearchCont
+  #   restart: always
+  #   ports:
+  #     - "9200:9200"
+  #     - "9300:9300"
+
+  # kibana:
+  #   image: docker.elastic.co/kibana/kibana:7.10.2
+  #   container_name: KibanaCont
+  #   restart: always
+  #   ports:
+  #     - "5601:5601"
+  #   depends_on:
+  #     - elasticsearch
+
+  # rabbitmq:
+  #   image: rabbitmq:latest
+  #   container_name: RabbitMQCont
+  #   restart: always
+  #   ports:
+  #     - "5672:5672"
+  #     - "15672:15672"
+  #   environment:
+  #     - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+  #     - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   container_name: PrometheusCont
+  #   restart: always
+  #   ports:
+  #     - "9090:9090"
+  #   volumes:
+  #     - ./prometheus:/etc/prometheus
+
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   container_name: GrafanaCont
+  #   restart: always
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+  #   depends_on:
+  #     - prometheus
+
+  # fail2ban:
+  #   image: crazymax/fail2ban:latest
+  #   container_name: Fail2BanCont
+  #   restart: always
+  #   cap_add:
+  #     - NET_ADMIN
+  #   network_mode: "host"
+  #   environment:
+  #     - F2B_LOG_TARGET=/host_logs/auth.log
+  #     - F2B_DB_PURGE_AGE=604800
+  #   volumes:
+  #     - /var/log:/host_logs
+  
+
+
+networks:
+  localhost_default:
+    name: localhost_default
+    external: true
